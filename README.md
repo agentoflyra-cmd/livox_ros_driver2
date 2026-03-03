@@ -4,7 +4,16 @@ This fork merged some PRs that have not yet been merged into the main repository
 - [Delete build.sh & merge ROS1/2 into one package#46](https://github.com/Livox-SDK/livox_ros_driver2/pull/46)
 - [fix(comm): make imu extrinsics handling thread-safe (follow-up to #209)#239](https://github.com/Livox-SDK/livox_ros_driver2/pull/239)
 
-
+## About this branch
+Last Commit:
+Enhance error logging and thread safety in Livox Lidar driver
+- Introduced atomic counters for logging retries in LidarInfoChangeCallback and related functions to reduce log spam.
+- Improved thread safety in CacheIndex methods by ensuring mutex locks are used consistently.
+- Added mutex to LidarDataQueue to protect shared data during queue operations.
+- Updated DriverNode destructor to safely handle thread joins and exit signals.
+- Enhanced Lddc class to support ROS2 with separate publishers for PointCloud2 and CustomMsg types.
+- Refactored point cloud publishing methods to ensure proper handling of empty packets and improved logging.
+- Adjusted parameter handling in DriverNode constructor to enforce output data type constraints for ROS2.
 
 # Livox ROS Driver 2
 
