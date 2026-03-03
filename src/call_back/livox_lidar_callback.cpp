@@ -27,8 +27,18 @@
 #include <string>
 #include <thread>
 #include <iostream>
+#include <atomic>
 
 namespace livox_ros {
+
+namespace {
+
+inline bool ShouldLogRetry(std::atomic<uint32_t>& counter) {
+  const uint32_t current = ++counter;
+  return current == 1 || (current % 50 == 0);
+}
+
+}  // namespace
 
 void LivoxLidarCallback::LidarInfoChangeCallback(const uint32_t handle,
                                            const LivoxLidarInfo* info,
@@ -113,7 +123,11 @@ void LivoxLidarCallback::WorkModeChangedCallback(livox_status status,
                                                  LivoxLidarAsyncControlResponse *response,
                                                  void *client_data) {
   if (status != kLivoxLidarStatusSuccess) {
-    std::cout << "failed to change work mode, handle: " << handle << ", try again..."<< std::endl;
+    static std::atomic<uint32_t> retry_counter{0};
+    if (ShouldLogRetry(retry_counter)) {
+      std::cout << "failed to change work mode, handle: " << handle
+                << ", retrying..."<< std::endl;
+    }
     std::this_thread::sleep_for(std::chrono::seconds(1));
     SetLivoxLidarWorkMode(handle, kLivoxLidarNormal, WorkModeChangedCallback, nullptr);
     return;
@@ -142,11 +156,14 @@ void LivoxLidarCallback::SetDataTypeCallback(livox_status status, uint32_t handl
     std::cout << "successfully set data type, handle: " << handle
               << ", set_bit: " << lidar_device->livox_config.set_bits << std::endl;
   } else if (status == kLivoxLidarStatusTimeout) {
+    static std::atomic<uint32_t> retry_counter{0};
     const UserLivoxLidarConfig& config = lidar_device->livox_config;
     SetLivoxLidarPclDataType(handle, static_cast<LivoxLidarPointDataType>(config.pcl_data_type),
                              LivoxLidarCallback::SetDataTypeCallback, client_data);
-    std::cout << "set data type timeout, handle: " << handle
-              << ", try again..." << std::endl;
+    if (ShouldLogRetry(retry_counter)) {
+      std::cout << "set data type timeout, handle: " << handle
+                << ", retrying..." << std::endl;
+    }
   } else {
     std::cout << "failed to set data type, handle: " << handle
               << ", return code: " << response->ret_code
@@ -175,11 +192,14 @@ void LivoxLidarCallback::SetPatternModeCallback(livox_status status, uint32_t ha
     std::cout << "successfully set pattern mode, handle: " << handle
               << ", set_bit: " << lidar_device->livox_config.set_bits << std::endl;
   } else if (status == kLivoxLidarStatusTimeout) {
+    static std::atomic<uint32_t> retry_counter{0};
     const UserLivoxLidarConfig& config = lidar_device->livox_config;
     SetLivoxLidarScanPattern(handle, static_cast<LivoxLidarScanPattern>(config.pattern_mode),
                              LivoxLidarCallback::SetPatternModeCallback, client_data);
-    std::cout << "set pattern mode timeout, handle: " << handle
-              << ", try again..." << std::endl;
+    if (ShouldLogRetry(retry_counter)) {
+      std::cout << "set pattern mode timeout, handle: " << handle
+                << ", retrying..." << std::endl;
+    }
   } else {
     std::cout << "failed to set pattern mode, handle: " << handle
               << ", return code: " << response->ret_code
@@ -208,11 +228,14 @@ void LivoxLidarCallback::SetBlindSpotCallback(livox_status status, uint32_t hand
     std::cout << "successfully set blind spot, handle: " << handle
               << ", set_bit: " << lidar_device->livox_config.set_bits << std::endl;
   } else if (status == kLivoxLidarStatusTimeout) {
+    static std::atomic<uint32_t> retry_counter{0};
     const UserLivoxLidarConfig& config = lidar_device->livox_config;
     SetLivoxLidarBlindSpot(handle, config.blind_spot_set,
                            LivoxLidarCallback::SetBlindSpotCallback, client_data);
-    std::cout << "set blind spot timeout, handle: " << handle
-              << ", try again..." << std::endl;
+    if (ShouldLogRetry(retry_counter)) {
+      std::cout << "set blind spot timeout, handle: " << handle
+                << ", retrying..." << std::endl;
+    }
   } else {
     std::cout << "failed to set blind spot, handle: " << handle
               << ", return code: " << response->ret_code
@@ -241,11 +264,14 @@ void LivoxLidarCallback::SetDualEmitCallback(livox_status status, uint32_t handl
     std::cout << "successfully set dual emit mode, handle: " << handle
               << ", set_bit: " << lidar_device->livox_config.set_bits << std::endl;
   } else if (status == kLivoxLidarStatusTimeout) {
+    static std::atomic<uint32_t> retry_counter{0};
     const UserLivoxLidarConfig& config = lidar_device->livox_config;
     SetLivoxLidarDualEmit(handle, config.dual_emit_en,
                           LivoxLidarCallback::SetDualEmitCallback, client_data);
-    std::cout << "set dual emit mode timeout, handle: " << handle
-              << ", try again..." << std::endl;
+    if (ShouldLogRetry(retry_counter)) {
+      std::cout << "set dual emit mode timeout, handle: " << handle
+                << ", retrying..." << std::endl;
+    }
   } else {
     std::cout << "failed to set dual emit mode, handle: " << handle
               << ", return code: " << response->ret_code
@@ -268,8 +294,11 @@ void LivoxLidarCallback::SetAttitudeCallback(livox_status status, uint32_t handl
   if (status == kLivoxLidarStatusSuccess) {
     std::cout << "successfully set lidar attitude, ip: " << IpNumToString(handle) << std::endl;
   } else if (status == kLivoxLidarStatusTimeout) {
-    std::cout << "set lidar attitude timeout, ip: " << IpNumToString(handle)
-              << ", try again..." << std::endl;
+    static std::atomic<uint32_t> retry_counter{0};
+    if (ShouldLogRetry(retry_counter)) {
+      std::cout << "set lidar attitude timeout, ip: " << IpNumToString(handle)
+                << ", retrying..." << std::endl;
+    }
     const UserLivoxLidarConfig& config = lidar_device->livox_config;
     LivoxLidarInstallAttitude attitude {
       config.extrinsic_param.roll,
@@ -306,8 +335,11 @@ void LivoxLidarCallback::EnableLivoxLidarImuDataCallback(livox_status status, ui
   if (status == kLivoxLidarStatusSuccess) {
     std::cout << "successfully enable Livox Lidar imu, ip: " << IpNumToString(handle) << std::endl;
   } else if (status == kLivoxLidarStatusTimeout) {
-    std::cout << "enable Livox Lidar imu timeout, ip: " << IpNumToString(handle)
-              << ", try again..." << std::endl;
+    static std::atomic<uint32_t> retry_counter{0};
+    if (ShouldLogRetry(retry_counter)) {
+      std::cout << "enable Livox Lidar imu timeout, ip: " << IpNumToString(handle)
+                << ", retrying..." << std::endl;
+    }
     EnableLivoxLidarImuData(handle, LivoxLidarCallback::EnableLivoxLidarImuDataCallback, lds_lidar);
   } else {
     std::cout << "failed to enable Livox Lidar imu, ip: " << IpNumToString(handle) << std::endl;

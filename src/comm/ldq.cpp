@@ -24,10 +24,33 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <mutex>
 
 #include "ldq.h"
 
 namespace livox_ros {
+
+namespace {
+
+bool QueuePrePopUnsafe(LidarDataQueue *queue, StoragePacket *storage_packet) {
+  if (queue == nullptr || storage_packet == nullptr) {
+    return false;
+  }
+
+  if (queue->rd_idx == queue->wr_idx) {
+    return false;
+  }
+
+  uint32_t rd_idx = queue->rd_idx & queue->mask;
+  storage_packet->base_time = queue->storage_packet[rd_idx].base_time;
+  storage_packet->points_num = queue->storage_packet[rd_idx].points_num;
+  storage_packet->points.resize(queue->storage_packet[rd_idx].points_num);
+  memcpy(storage_packet->points.data(), queue->storage_packet[rd_idx].points.data(),
+         storage_packet->points_num * sizeof(PointXyzlt));
+  return true;
+}
+
+} // namespace
 
 /* for pointcloud queue process */
 bool InitQueue(LidarDataQueue *queue, uint32_t queue_size) {
@@ -35,6 +58,8 @@ bool InitQueue(LidarDataQueue *queue, uint32_t queue_size) {
     // ROS_WARN("RosDriver Queue: Initialization failed - invalid queue.");
     return false;
   }
+
+  std::lock_guard<std::mutex> lock(queue->mutex);
 
   if (!IsPowerOf2(queue_size)) {
     queue_size = RoundupPowerOf2(queue_size);
@@ -66,8 +91,11 @@ bool DeInitQueue(LidarDataQueue *queue) {
     return false;
   }
 
+  std::lock_guard<std::mutex> lock(queue->mutex);
+
   if (queue->storage_packet) {
     delete[] queue->storage_packet;
+    queue->storage_packet = nullptr;
   }
 
   queue->rd_idx = 0;
@@ -79,61 +107,86 @@ bool DeInitQueue(LidarDataQueue *queue) {
 }
 
 void ResetQueue(LidarDataQueue *queue) {
+  if (queue == nullptr) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(queue->mutex);
   queue->rd_idx = 0;
   queue->wr_idx = 0;
 }
 
 bool QueuePrePop(LidarDataQueue *queue, StoragePacket *storage_packet) {
-  if (queue == nullptr || storage_packet == nullptr) {
-    // ROS_WARN("RosDriver Queue: Invalid pointer parameters.");
+  if (queue == nullptr) {
     return false;
   }
-
-  if (QueueIsEmpty(queue)) {
-    // ROS_WARN("RosDriver Queue: Pop failed, since the queue is empty.");
-    return false;
-  }
-
-  uint32_t rd_idx = queue->rd_idx & queue->mask;
-
-  storage_packet->base_time = queue->storage_packet[rd_idx].base_time;
-  storage_packet->points_num = queue->storage_packet[rd_idx].points_num;
-  storage_packet->points.resize(queue->storage_packet[rd_idx].points_num);
-
-  memcpy(storage_packet->points.data(), queue->storage_packet[rd_idx].points.data(), (storage_packet->points_num) * sizeof(PointXyzlt));
-  return true;
+  std::lock_guard<std::mutex> lock(queue->mutex);
+  return QueuePrePopUnsafe(queue, storage_packet);
 }
 
 void QueuePopUpdate(LidarDataQueue *queue) {
-  queue->rd_idx++;
+  if (queue == nullptr) {
+    return;
+  }
+  std::lock_guard<std::mutex> lock(queue->mutex);
+  if (queue->rd_idx != queue->wr_idx) {
+    queue->rd_idx++;
+  }
 }
 
 bool QueuePop(LidarDataQueue *queue, StoragePacket *storage_packet) {
-  if (!QueuePrePop(queue, storage_packet)) {
+  if (queue == nullptr || storage_packet == nullptr) {
     return false;
   }
-  QueuePopUpdate(queue);
 
+  std::lock_guard<std::mutex> lock(queue->mutex);
+  if (!QueuePrePopUnsafe(queue, storage_packet)) {
+    return false;
+  }
+  queue->rd_idx++;
   return true;
 }
 
 uint32_t QueueUsedSize(LidarDataQueue *queue) {
+  if (queue == nullptr) {
+    return 0;
+  }
+  std::lock_guard<std::mutex> lock(queue->mutex);
   return queue->wr_idx - queue->rd_idx;
 }
 
 uint32_t QueueUnusedSize(LidarDataQueue *queue) {
-  return (queue->size - QueueUsedSize(queue));
+  if (queue == nullptr) {
+    return 0;
+  }
+  std::lock_guard<std::mutex> lock(queue->mutex);
+  return queue->size - (queue->wr_idx - queue->rd_idx);
 }
 
 bool QueueIsFull(LidarDataQueue *queue) {
-  return ((queue->wr_idx - queue->rd_idx) > queue->mask);
+  if (queue == nullptr) {
+    return false;
+  }
+  std::lock_guard<std::mutex> lock(queue->mutex);
+  return (queue->wr_idx - queue->rd_idx) > queue->mask;
 }
 
 bool QueueIsEmpty(LidarDataQueue *queue) {
-  return (queue->rd_idx == queue->wr_idx);
+  if (queue == nullptr) {
+    return true;
+  }
+  std::lock_guard<std::mutex> lock(queue->mutex);
+  return queue->rd_idx == queue->wr_idx;
 }
 
 uint32_t QueuePushAny(LidarDataQueue *queue, uint8_t *data, const uint64_t base_time) {
+  if (queue == nullptr || data == nullptr || queue->storage_packet == nullptr) {
+    return 0;
+  }
+  std::lock_guard<std::mutex> lock(queue->mutex);
+  if ((queue->wr_idx - queue->rd_idx) > queue->mask) {
+    return 0;
+  }
+
   uint32_t wr_idx = queue->wr_idx & queue->mask;
   PointPacket* lidar_point_data = reinterpret_cast<PointPacket*>(data);
   queue->storage_packet[wr_idx].base_time = base_time;

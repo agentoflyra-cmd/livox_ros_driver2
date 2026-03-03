@@ -145,6 +145,14 @@ DriverNode::DriverNode(const rclcpp::NodeOptions & node_options)
   this->get_parameter("output_data_type", output_type);
   this->get_parameter("frame_id", frame_id);
 
+#ifdef BUILDING_ROS2
+  if (xfer_format == kPclPxyziMsg) {
+    DRIVER_ERROR(*this,
+        "xfer_format=2 (pcl::PointCloud) is not supported in ROS2, fallback to xfer_format=0");
+    xfer_format = kPointCloud2Msg;
+  }
+#endif
+
   if (publish_freq > 100.0) {
     publish_freq = 100.0;
   } else if (publish_freq < 0.5) {

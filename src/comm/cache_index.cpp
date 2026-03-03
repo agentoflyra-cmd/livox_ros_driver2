@@ -78,9 +78,10 @@ int8_t CacheIndex::GetIndex(const uint8_t livox_lidar_type, const uint32_t handl
     return -1;
   }
 
-  if (map_index_.find(key) != map_index_.end()) {
-    std::lock_guard<std::mutex> lock(index_mutex_);
-    index = map_index_[key];
+  std::lock_guard<std::mutex> lock(index_mutex_);
+  auto it = map_index_.find(key);
+  if (it != map_index_.end()) {
+    index = it->second;
     return 0;
   }
   printf("Can not get index, the livox lidar type:%u, handle:%u\n", livox_lidar_type, handle);
@@ -94,9 +95,13 @@ int8_t CacheIndex::LvxGetIndex(const uint8_t livox_lidar_type, const uint32_t ha
     return -1;
   }
 
-  if (map_index_.find(key) != map_index_.end()) {
-    index = map_index_[key];
-    return 0;
+  {
+    std::lock_guard<std::mutex> lock(index_mutex_);
+    auto it = map_index_.find(key);
+    if (it != map_index_.end()) {
+      index = it->second;
+      return 0;
+    }
   }
 
   return GetFreeIndex(livox_lidar_type, handle, index);
@@ -110,9 +115,10 @@ void CacheIndex::ResetIndex(LidarDevice *lidar) {
     return;
   }
 
-  if (map_index_.find(key) != map_index_.end()) {
-    uint8_t index = map_index_[key];
-    std::lock_guard<std::mutex> lock(index_mutex_);
+  std::lock_guard<std::mutex> lock(index_mutex_);
+  auto it = map_index_.find(key);
+  if (it != map_index_.end()) {
+    uint8_t index = it->second;
     map_index_.erase(key);
     index_cache_[index] = 0;
   }

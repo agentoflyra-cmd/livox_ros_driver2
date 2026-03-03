@@ -126,6 +126,9 @@ class Lddc final {
 
 #ifdef BUILDING_ROS2
   PublisherPtr CreatePublisher(uint8_t msg_type, std::string &topic_name, uint32_t queue_size);
+  std::shared_ptr<Publisher<PointCloud2>> GetCurrentPointCloud2Publisher(uint8_t index);
+  std::shared_ptr<Publisher<CustomMsg>> GetCurrentCustomPublisher(uint8_t index);
+  std::shared_ptr<Publisher<ImuMsg>> GetCurrentImuTypedPublisher(uint8_t index);
 #endif
 
   PublisherPtr GetCurrentPublisher(uint8_t index);
@@ -153,6 +156,14 @@ class Lddc final {
   PublisherPtr global_pub_;
   PublisherPtr private_imu_pub_[kMaxSourceLidar];
   PublisherPtr global_imu_pub_;
+  PointCloud2 pointcloud2_cache_[kMaxSourceLidar];
+  CustomMsg custom_msg_cache_[kMaxSourceLidar];
+  std::shared_ptr<Publisher<PointCloud2>> private_pointcloud2_pub_[kMaxSourceLidar];
+  std::shared_ptr<Publisher<PointCloud2>> global_pointcloud2_pub_;
+  std::shared_ptr<Publisher<CustomMsg>> private_custom_pub_[kMaxSourceLidar];
+  std::shared_ptr<Publisher<CustomMsg>> global_custom_pub_;
+  std::shared_ptr<Publisher<ImuMsg>> private_imu_typed_pub_[kMaxSourceLidar];
+  std::shared_ptr<Publisher<ImuMsg>> global_imu_typed_pub_;
 #endif
 
   livox_ros::DriverNode *cur_node_;

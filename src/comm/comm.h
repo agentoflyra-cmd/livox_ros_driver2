@@ -204,6 +204,7 @@ typedef struct {
 
 typedef struct {
   StoragePacket *storage_packet;
+  std::mutex mutex;
   volatile uint32_t rd_idx;
   volatile uint32_t wr_idx;
   uint32_t mask;
