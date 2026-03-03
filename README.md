@@ -58,7 +58,7 @@ Desktop-Full installation is recommend.
 ### 2.1 Clone Livox ROS Driver 2 source code:
 
 ```shell
-git clone https://github.com/Livox-SDK/livox_ros_driver2.git ws_livox/src/livox_ros_driver2
+git clone git@github.com:agentoflyra-cmd/livox_ros_driver2.git ws_livox/src/livox_ros_driver2
 ```
 
   **Note :**
