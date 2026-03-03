@@ -1,3 +1,11 @@
+# NOTICE
+This fork merged some PRs that have not yet been merged into the main repository, and there may be unstable functionality. It is only used for personal development, so there is no plan to contribute it to the main repository. If you want to see what has been modified, please check the following PRs:
+
+- [Delete build.sh & merge ROS1/2 into one package#46](https://github.com/Livox-SDK/livox_ros_driver2/pull/46)
+- [fix(comm): make imu extrinsics handling thread-safe (follow-up to #209)#239](https://github.com/Livox-SDK/livox_ros_driver2/pull/239)
+
+
+
 # Livox ROS Driver 2
 
 Livox ROS Driver 2 is the 2nd-generation driver package used to connect LiDAR products produced by Livox, applicable for ROS (noetic recommended) and ROS2 (foxy or humble recommended).
