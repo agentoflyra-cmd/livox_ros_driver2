@@ -75,6 +75,7 @@ class Lds {
   double publish_freq_;
   uint8_t data_src_;
  private:
+  uint64_t dropped_lidar_frames_[kMaxSourceLidar] = {};
   volatile bool request_exit_;
 };
 

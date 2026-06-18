@@ -60,6 +60,11 @@ uint32_t QueueUnusedSize(LidarDataQueue *queue);
 bool QueueIsFull(LidarDataQueue *queue);
 bool QueueIsEmpty(LidarDataQueue *queue);
 uint32_t QueuePushAny(LidarDataQueue *queue, uint8_t *data, const uint64_t base_time);
+uint32_t QueuePushLatest(
+    LidarDataQueue *queue,
+    uint8_t *data,
+    const uint64_t base_time,
+    bool *dropped_oldest);
 
 }  // namespace livox_ros
 

@@ -23,6 +23,7 @@
 //
 
 #include <math.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -181,17 +182,30 @@ void Lds::PushLidarData(PointPacket* lidar_data, const uint8_t index, const uint
     printf("Lidar[%u] storage queue size: %u\n", index, queue_size);
   }
 
-  if (!QueueIsFull(queue)) {
-    QueuePushAny(queue, (uint8_t *)lidar_data, base_time);
-    if (!QueueIsEmpty(queue)) {
-      if (pcd_semaphore_.GetCount() <= 0) {
-        pcd_semaphore_.Signal();
-      }
+  bool dropped_oldest = false;
+  if (QueuePushLatest(
+          queue,
+          reinterpret_cast<uint8_t *>(lidar_data),
+          base_time,
+          &dropped_oldest) == 0) {
+    return;
+  }
+
+  if (dropped_oldest) {
+    const uint64_t dropped = ++dropped_lidar_frames_[index];
+    if (dropped == 1 || (dropped % 100) == 0) {
+      printf(
+          "Lidar[%u] publisher overloaded: dropped oldest queued frame "
+          "(total=%" PRIu64 ", queue=%u/%u)\n",
+          index,
+          dropped,
+          QueueUsedSize(queue),
+          queue->size);
     }
-  } else {
-    if (pcd_semaphore_.GetCount() <= 0) {
-        pcd_semaphore_.Signal();
-    }
+  }
+
+  if (pcd_semaphore_.GetCount() <= 0) {
+    pcd_semaphore_.Signal();
   }
 }
 

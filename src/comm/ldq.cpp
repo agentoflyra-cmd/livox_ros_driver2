@@ -200,4 +200,40 @@ uint32_t QueuePushAny(LidarDataQueue *queue, uint8_t *data, const uint64_t base_
   return 1;
 }
 
+uint32_t QueuePushLatest(
+    LidarDataQueue *queue,
+    uint8_t *data,
+    const uint64_t base_time,
+    bool *dropped_oldest) {
+  if (dropped_oldest != nullptr) {
+    *dropped_oldest = false;
+  }
+  if (queue == nullptr || data == nullptr || queue->storage_packet == nullptr) {
+    return 0;
+  }
+
+  std::lock_guard<std::mutex> lock(queue->mutex);
+  if ((queue->wr_idx - queue->rd_idx) > queue->mask) {
+    // Real-time sensor data must remain fresh. Drop the oldest queued frame
+    // instead of rejecting the newest frame and accumulating latency.
+    queue->rd_idx++;
+    if (dropped_oldest != nullptr) {
+      *dropped_oldest = true;
+    }
+  }
+
+  const uint32_t wr_idx = queue->wr_idx & queue->mask;
+  PointPacket* lidar_point_data = reinterpret_cast<PointPacket*>(data);
+  queue->storage_packet[wr_idx].base_time = base_time;
+  queue->storage_packet[wr_idx].points_num = lidar_point_data->points_num;
+  queue->storage_packet[wr_idx].points.clear();
+  queue->storage_packet[wr_idx].points.resize(lidar_point_data->points_num);
+  memcpy(
+      queue->storage_packet[wr_idx].points.data(),
+      lidar_point_data->points,
+      sizeof(PointXyzlt) * lidar_point_data->points_num);
+  queue->wr_idx++;
+  return 1;
+}
+
 }  // namespace livox_ros

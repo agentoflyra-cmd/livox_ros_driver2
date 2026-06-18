@@ -27,6 +27,7 @@
 #include "comm/comm.h"
 
 #include <inttypes.h>
+#include <algorithm>
 #include <iostream>
 #include <iomanip>
 #include <math.h>
@@ -458,6 +459,19 @@ void Lddc::PublishCustomPointData(const CustomMsg& livox_msg, const uint8_t inde
   }
 
   if (kOutputToRos == output_type_) {
+#ifdef BUILDING_ROS2
+    const int64_t delay_ns =
+        cur_node_->now().nanoseconds() -
+        rclcpp::Time(livox_msg.header.stamp).nanoseconds();
+    if (delay_ns > 200000000LL) {
+      RCLCPP_WARN_THROTTLE(
+          cur_node_->get_logger(),
+          *cur_node_->get_clock(),
+          5000,
+          "Livox point cloud publication delay is %.1f ms; stale frames are being dropped",
+          static_cast<double>(delay_ns) / 1e6);
+    }
+#endif
     publisher_ptr->publish(livox_msg);
   } else {
 #ifdef BUILDING_ROS1
@@ -585,11 +599,15 @@ std::shared_ptr<rclcpp::PublisherBase> Lddc::CreatePublisher(uint8_t msg_type,
     if (kPointCloud2Msg == msg_type) {
       DRIVER_INFO(*cur_node_,
           "%s publish use PointCloud2 format", topic_name.c_str());
-      return cur_node_->create_publisher<PointCloud2>(topic_name, queue_size);
+      auto qos = rclcpp::SensorDataQoS();
+      qos.keep_last(std::min<uint32_t>(queue_size, 5));
+      return cur_node_->create_publisher<PointCloud2>(topic_name, qos);
     } else if (kLivoxCustomMsg == msg_type) {
       DRIVER_INFO(*cur_node_,
           "%s publish use livox custom format", topic_name.c_str());
-      return cur_node_->create_publisher<CustomMsg>(topic_name, queue_size);
+      auto qos = rclcpp::SensorDataQoS();
+      qos.keep_last(std::min<uint32_t>(queue_size, 5));
+      return cur_node_->create_publisher<CustomMsg>(topic_name, qos);
     }
 #if 0
     else if (kPclPxyziMsg == msg_type)  {
@@ -601,8 +619,9 @@ std::shared_ptr<rclcpp::PublisherBase> Lddc::CreatePublisher(uint8_t msg_type,
     else if (kLivoxImuMsg == msg_type)  {
       DRIVER_INFO(*cur_node_,
           "%s publish use imu format", topic_name.c_str());
-      return cur_node_->create_publisher<ImuMsg>(topic_name,
-          queue_size);
+      auto qos = rclcpp::SensorDataQoS();
+      qos.keep_last(std::min<uint32_t>(queue_size, 10));
+      return cur_node_->create_publisher<ImuMsg>(topic_name, qos);
     } else {
       PublisherPtr null_publisher(nullptr);
       return null_publisher;
