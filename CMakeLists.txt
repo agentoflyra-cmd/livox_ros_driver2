@@ -1,5 +1,5 @@
-# judge which cmake codes to use 
-if($ENV{ROS_VERSION} STREQUAL "1")
+# judge which cmake codes to use
+if("$ENV{ROS_VERSION}" STREQUAL "1")
 
   # Copyright(c) 2019 livoxtech limited.
 
@@ -184,7 +184,7 @@ if($ENV{ROS_VERSION} STREQUAL "1")
   #---------------------------------------------------------------------------------------
 
 
-else($ENV{ROS_VERSION} STREQUAL "2")
+else()
 
   # Copyright(c) 2020 livoxtech limited.
 
@@ -282,7 +282,7 @@ else($ENV{ROS_VERSION} STREQUAL "2")
   target_include_directories(${PROJECT_NAME} PRIVATE ${livox_sdk_INCLUDE_DIRS})
 
   # get include directories of custom msg headers
-  if($ENV{ROS_DISTRO} STREQUAL "foxy")
+  if("$ENV{ROS_DISTRO}" STREQUAL "foxy")
     set(LIVOX_INTERFACE_TARGET "${LIVOX_INTERFACES}__rosidl_typesupport_cpp")
     add_dependencies(${PROJECT_NAME} ${LIVOX_INTERFACES})
     get_target_property(LIVOX_INTERFACES_INCLUDE_DIRECTORIES ${LIVOX_INTERFACE_TARGET} INTERFACE_INCLUDE_DIRECTORIES)
