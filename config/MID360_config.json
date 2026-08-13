@@ -29,12 +29,12 @@
       "pcl_data_type" : 1,
       "pattern_mode" : 0,
       "extrinsic_parameter" : {
-        "roll": -0.075207,
-        "pitch": 9.515235,
-        "yaw": -0.014689,
-        "x": 187,
+        "roll": 0.000000,
+        "pitch": 0.000000,
+        "yaw": 0.000000,
+        "x": 0,
         "y": 0,
-        "z": 80
+        "z": 0
       }
     }
   ]
